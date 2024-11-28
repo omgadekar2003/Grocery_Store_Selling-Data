@@ -219,20 +219,22 @@ def save_to_db(description, price):
 
 # Streamlit App
 st.title("Voice to Text Sales Recorder")
-st.write("Upload your voice note to record sales information.")
+st.write("Press the button and speak to record your sales information.")
 
-# Audio input
-audio_recognizer = sr.Recognizer()
-audio_file = st.file_uploader("Upload a voice note (.wav format)", type=["wav"])
+# Initialize the recognizer
+recognizer = sr.Recognizer()
 
-if audio_file:
-    st.audio(audio_file)
+# Button to record audio
+if st.button('Record Voice'):
+    # Capture the audio
+    with sr.Microphone() as source:
+        st.write("Listening...")
+        recognizer.adjust_for_ambient_noise(source)
+        audio = recognizer.listen(source)
 
-    with sr.AudioFile(audio_file) as source:
         try:
-            # Recognize audio using SpeechRecognition
-            audio = audio_recognizer.record(source)
-            transcript = audio_recognizer.recognize_google(audio)
+            # Recognize audio using Google Speech Recognition
+            transcript = recognizer.recognize_google(audio)
             st.write(f"Detected Speech: {transcript}")
 
             # Parse description and price
@@ -247,7 +249,7 @@ if audio_file:
                 save_to_db(description, price)
                 st.success("Record saved successfully!")
             else:
-                st.error("Could not parse description and price from the audio input.")
+                st.error("Could not parse description and price from the voice input.")
         except Exception as e:
             st.error(f"Error processing audio: {e}")
 
