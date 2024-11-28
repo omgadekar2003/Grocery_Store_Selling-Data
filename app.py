@@ -99,8 +99,8 @@
 #------
 import streamlit as st
 from pymongo import MongoClient
-from datetime import datetime, timedelta
-import tempfile
+import speech_recognition as sr
+from datetime import datetime
 
 # MongoDB Atlas connection
 MONGO_URI = st.secrets["MONGO_URI"]
@@ -117,12 +117,20 @@ def add_record(description, amount):
     }
     collection.insert_one(record)
 
-# Utility: Fetch sales records
-def fetch_records(start_date=None, end_date=None):
-    query = {}
-    if start_date and end_date:
-        query["date"] = {"$gte": start_date, "$lte": end_date}
-    return list(collection.find(query))
+# Utility: Speech recognition
+def get_voice_input():
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        st.info("Listening... Speak now!")
+        try:
+            audio = recognizer.listen(source, timeout=5)
+            text = recognizer.recognize_google(audio)
+            return text
+        except sr.UnknownValueError:
+            st.error("Sorry, I could not understand the audio.")
+        except sr.RequestError:
+            st.error("Network error. Please check your connection.")
+    return None
 
 # Streamlit UI
 st.sidebar.title("Grocery Store App")
@@ -135,53 +143,40 @@ if menu == "Home":
 
 elif menu == "Add Today's Sell":
     st.title("Add Today's Sell")
-    st.write("Record a voice message and add sales records.")
-    
-    audio_value = st.audio_input("Record a voice message")
-    
-    if audio_value:
-        # Save the audio file temporarily
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio_file:
-            temp_audio_file.write(audio_value)
-            temp_audio_path = temp_audio_file.name
+    st.write("Click the microphone icon to record a voice message and add sales records.")
 
-        st.success(f"Audio recorded and saved temporarily at: {temp_audio_path}")
-        st.audio(audio_value)
+    # Display microphone icon for recording
+    mic_clicked = st.button("🎤 Record")
+    if mic_clicked:
+        voice_text = get_voice_input()
+        if voice_text:
+            st.success(f"Detected: {voice_text}")
 
-        # Placeholder: Process the audio file (you can integrate a speech-to-text solution here)
-        # For now, ask the user for manual input
-        st.write("Please manually input the description and amount based on your recording.")
-        description = st.text_input("Description", value="Item description here")
-        amount = st.number_input("Amount", min_value=0.0)
-        
-        if st.button("Add Record"):
-            add_record(description, amount)
-            st.success("Record added successfully!")
+            # Placeholder: Process text to extract description and amount
+            st.write("Split the text into description and amount.")
+            # Example: Assume voice text is in format "description amount"
+            try:
+                *description_parts, amount_str = voice_text.split()
+                description = " ".join(description_parts)
+                amount = float(amount_str)
 
-    st.subheader("Sales Summary for Today")
-    today = datetime.now().date()
-    records = fetch_records(start_date=today, end_date=today + timedelta(days=1))
-    if records:
-        for i, record in enumerate(records, 1):
-            st.write(f"{i}. {record['description']} - ₹{record['amount']}")
-
-        total = sum([record["amount"] for record in records])
-        st.write(f"**Total Sales: ₹{total}**")
+                # Add to MongoDB
+                add_record(description, amount)
+                st.success("Record added successfully!")
+            except ValueError:
+                st.error("Unable to extract amount from the recorded text. Please try again.")
 
 elif menu == "History":
     st.title("Sales History")
     st.write("View sales history by date range.")
-    start_date = st.date_input("Start Date", value=datetime.now().date() - timedelta(days=7))
+    start_date = st.date_input("Start Date", value=datetime.now().date())
     end_date = st.date_input("End Date", value=datetime.now().date())
-    
+
     if st.button("Fetch History"):
-        records = fetch_records(start_date=datetime.combine(start_date, datetime.min.time()),
-                                end_date=datetime.combine(end_date, datetime.max.time()))
-        if records:
-            for i, record in enumerate(records, 1):
-                st.write(f"{i}. {record['description']} - ₹{record['amount']} on {record['date'].strftime('%Y-%m-%d %H:%M:%S')}")
-        else:
-            st.write("No records found for the selected date range.")
+        query = {"date": {"$gte": start_date, "$lte": end_date}}
+        records = collection.find(query)
+        for i, record in enumerate(records, 1):
+            st.write(f"{i}. {record['description']} - ₹{record['amount']} on {record['date']}")
 
 elif menu == "About Us":
     st.title("About Us")
