@@ -196,7 +196,6 @@
 #--------------
 #######code for input taken
 #------
-
 import streamlit as st
 from pymongo import MongoClient
 from datetime import datetime
@@ -252,4 +251,10 @@ if st.button('Record Voice'):
                 st.error("Could not parse description and price from the voice input.")
         except Exception as e:
             st.error(f"Error processing audio: {e}")
+
+            else:
+                st.error("Could not parse description and price from the voice input.")
+        except Exception as e:
+            st.error(f"Error processing audio: {e}")
+
 
