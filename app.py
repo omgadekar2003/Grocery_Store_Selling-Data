@@ -99,86 +99,94 @@
 #------
 import streamlit as st
 from pymongo import MongoClient
-import speech_recognition as sr
 from datetime import datetime
+import speech_recognition as sr
 
-# MongoDB Atlas connection
+# Load MongoDB URI from secrets.toml
 MONGO_URI = st.secrets["MONGO_URI"]
 client = MongoClient(MONGO_URI)
 db = client["GroceryStore"]
 collection = db["SalesRecords"]
 
-# Utility: Add a record to MongoDB
-def add_record(description, amount):
+# Function to save data to MongoDB
+def save_to_db(description, price, date):
     record = {
-        "date": datetime.now(),
         "description": description,
-        "amount": amount,
+        "price": price,
+        "date": date
     }
     collection.insert_one(record)
 
-# Utility: Speech recognition
-def get_voice_input():
-    recognizer = sr.Recognizer()
-    with sr.Microphone() as source:
-        st.info("Listening... Speak now!")
-        try:
-            audio = recognizer.listen(source, timeout=5)
-            text = recognizer.recognize_google(audio)
-            return text
-        except sr.UnknownValueError:
-            st.error("Sorry, I could not understand the audio.")
-        except sr.RequestError:
-            st.error("Network error. Please check your connection.")
-    return None
+# Function to retrieve history
+def get_history(date_filter=None):
+    if date_filter:
+        records = list(collection.find({"date": {"$regex": date_filter}}))
+    else:
+        records = list(collection.find())
+    return records
 
-# Streamlit UI
-st.sidebar.title("Grocery Store App")
-menu = st.sidebar.radio("Navigation", ["Home", "Add Today's Sell", "History", "About Us"])
+# Navigation
+menu = ["Home", "Sell Today", "History", "About Us"]
+choice = st.sidebar.selectbox("Navigation", menu)
 
-if menu == "Home":
-    st.title("Welcome to the Grocery Store App!")
-    st.write("This application will help you manage your store's sales effectively.")
-    st.write("Navigate using the menu to get started.")
+if choice == "Home":
+    st.title("Welcome to Grocery Store Sales Tracker!")
+    st.write("Navigate through the sidebar to record and view sales data.")
+    st.image("https://via.placeholder.com/400x200", caption="Your sales assistant!")
 
-elif menu == "Add Today's Sell":
-    st.title("Add Today's Sell")
-    st.write("Click the microphone icon to record a voice message and add sales records.")
+elif choice == "Sell Today":
+    st.title("Sell Today")
+    st.write("Record your sales here.")
 
-    # Display microphone icon for recording
-    mic_clicked = st.button("🎤 Record")
-    if mic_clicked:
-        voice_text = get_voice_input()
-        if voice_text:
-            st.success(f"Detected: {voice_text}")
+    # Audio input
+    audio_recognizer = sr.Recognizer()
+    audio_value = st.audio_input("Record a voice message", type="wav")
 
-            # Placeholder: Process text to extract description and amount
-            st.write("Split the text into description and amount.")
-            # Example: Assume voice text is in format "description amount"
+    if audio_value:
+        st.audio(audio_value)
+
+        with sr.AudioFile(audio_value) as source:
             try:
-                *description_parts, amount_str = voice_text.split()
-                description = " ".join(description_parts)
-                amount = float(amount_str)
+                audio = audio_recognizer.record(source)
+                transcript = audio_recognizer.recognize_google(audio)
+                st.write(f"Detected Speech: {transcript}")
 
-                # Add to MongoDB
-                add_record(description, amount)
-                st.success("Record added successfully!")
-            except ValueError:
-                st.error("Unable to extract amount from the recorded text. Please try again.")
+                # Parsing description and price
+                parts = transcript.split("for")
+                if len(parts) == 2:
+                    description = parts[0].strip()
+                    price = parts[1].strip()
+                    st.write(f"Description: {description}")
+                    st.write(f"Price: {price}")
 
-elif menu == "History":
+                    # Save data
+                    today_date = datetime.now().strftime("%Y-%m-%d")
+                    save_to_db(description, price, today_date)
+                    st.success("Record saved successfully!")
+                else:
+                    st.error("Could not parse description and price from your input.")
+            except Exception as e:
+                st.error(f"Error processing audio: {e}")
+
+elif choice == "History":
     st.title("Sales History")
-    st.write("View sales history by date range.")
-    start_date = st.date_input("Start Date", value=datetime.now().date())
-    end_date = st.date_input("End Date", value=datetime.now().date())
+    filter_date = st.text_input("Enter a date (YYYY-MM-DD) to filter, or leave blank to view all records:")
+    records = get_history(filter_date)
 
-    if st.button("Fetch History"):
-        query = {"date": {"$gte": start_date, "$lte": end_date}}
-        records = collection.find(query)
-        for i, record in enumerate(records, 1):
-            st.write(f"{i}. {record['description']} - ₹{record['amount']} on {record['date']}")
+    if records:
+        for record in records:
+            st.write(f"**Date:** {record['date']}")
+            st.write(f"**Description:** {record['description']}")
+            st.write(f"**Price:** {record['price']}")
+            st.write("---")
+    else:
+        st.write("No records found.")
 
-elif menu == "About Us":
+elif choice == "About Us":
     st.title("About Us")
-    st.write("This page will provide information about the application and its purpose.")
+    st.write("""
+    Welcome to the Grocery Store Sales Tracker!
+    This app allows you to record daily sales through voice input and manage sales history.
+    """)
+
 
