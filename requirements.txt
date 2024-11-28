@@ -6,4 +6,6 @@
 streamlit
 pymongo
 speechrecognition
+pyaudio
+
 
