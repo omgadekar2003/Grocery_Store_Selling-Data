@@ -1,4 +1,11 @@
-streamlit
-pymongo
-SpeechRecognition
-pydub
+#streamlit
+#pymongo
+#SpeechRecognition
+#pydub
+
+streamlit==1.25.0
+pymongo==4.5.0
+SpeechRecognition==3.8.1
+pydub==0.25.1
+pyaudio==0.2.13
+ffmpeg==4.3.1
