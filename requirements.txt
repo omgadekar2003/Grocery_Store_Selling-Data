@@ -4,8 +4,8 @@
 #pydub
 
 streamlit
-pymongo
-speechrecognition
-pyaudio
+#pymongo
+#speechrecognition
+#pyaudio
 
 
