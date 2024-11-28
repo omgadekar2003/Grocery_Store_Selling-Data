@@ -93,100 +93,161 @@
 # elif menu == "About Us":
 #     st.title("About Us")
 #     st.write("This page will provide information about the application and its purpose.")
-  
+#*----------------------------------------------------------------------------------------------------  
 #------
 #######code for input taken
 #------
+# import streamlit as st
+# from pymongo import MongoClient
+# from datetime import datetime
+# import speech_recognition as sr
+
+# # Load MongoDB URI from secrets.toml
+# MONGO_URI = st.secrets["MONGO_URI"]
+# client = MongoClient(MONGO_URI)
+# db = client["GroceryStore"]
+# collection = db["SalesRecords"]
+
+# # Function to save data to MongoDB
+# def save_to_db(description, price, date):
+#     record = {
+#         "description": description,
+#         "price": price,
+#         "date": date
+#     }
+#     collection.insert_one(record)
+
+# # Function to retrieve history
+# def get_history(date_filter=None):
+#     if date_filter:
+#         records = list(collection.find({"date": {"$regex": date_filter}}))
+#     else:
+#         records = list(collection.find())
+#     return records
+
+# # Navigation
+# menu = ["Home", "Sell Today", "History", "About Us"]
+# choice = st.sidebar.selectbox("Navigation", menu)
+
+# if choice == "Home":
+#     st.title("Welcome to Grocery Store Sales Tracker!")
+#     st.write("Navigate through the sidebar to record and view sales data.")
+#     st.image("https://via.placeholder.com/400x200", caption="Your sales assistant!")
+
+# elif choice == "Sell Today":
+#     st.title("Sell Today")
+#     st.write("Record your sales here.")
+
+#     # Audio input
+#     audio_recognizer = sr.Recognizer()
+#     audio_value = st.audio_input("Record a voice message", type="wav")
+
+#     if audio_value:
+#         st.audio(audio_value)
+
+#         with sr.AudioFile(audio_value) as source:
+#             try:
+#                 audio = audio_recognizer.record(source)
+#                 transcript = audio_recognizer.recognize_google(audio)
+#                 st.write(f"Detected Speech: {transcript}")
+
+#                 # Parsing description and price
+#                 parts = transcript.split("for")
+#                 if len(parts) == 2:
+#                     description = parts[0].strip()
+#                     price = parts[1].strip()
+#                     st.write(f"Description: {description}")
+#                     st.write(f"Price: {price}")
+
+#                     # Save data
+#                     today_date = datetime.now().strftime("%Y-%m-%d")
+#                     save_to_db(description, price, today_date)
+#                     st.success("Record saved successfully!")
+#                 else:
+#                     st.error("Could not parse description and price from your input.")
+#             except Exception as e:
+#                 st.error(f"Error processing audio: {e}")
+
+# elif choice == "History":
+#     st.title("Sales History")
+#     filter_date = st.text_input("Enter a date (YYYY-MM-DD) to filter, or leave blank to view all records:")
+#     records = get_history(filter_date)
+
+#     if records:
+#         for record in records:
+#             st.write(f"**Date:** {record['date']}")
+#             st.write(f"**Description:** {record['description']}")
+#             st.write(f"**Price:** {record['price']}")
+#             st.write("---")
+#     else:
+#         st.write("No records found.")
+
+# elif choice == "About Us":
+#     st.title("About Us")
+#     st.write("""
+#     Welcome to the Grocery Store Sales Tracker!
+#     This app allows you to record daily sales through voice input and manage sales history.
+#     """)
+
+#----------------------------------------------------------------------------------------------------  
+#----------------------------------------
+#-------------------------------
+#---------------------
+#--------------
+#######code for input taken
+#------
+
 import streamlit as st
 from pymongo import MongoClient
 from datetime import datetime
 import speech_recognition as sr
 
-# Load MongoDB URI from secrets.toml
+# MongoDB Configuration
 MONGO_URI = st.secrets["MONGO_URI"]
 client = MongoClient(MONGO_URI)
 db = client["GroceryStore"]
 collection = db["SalesRecords"]
 
 # Function to save data to MongoDB
-def save_to_db(description, price, date):
+def save_to_db(description, price):
     record = {
         "description": description,
         "price": price,
-        "date": date
+        "date": datetime.now().strftime("%Y-%m-%d")
     }
     collection.insert_one(record)
 
-# Function to retrieve history
-def get_history(date_filter=None):
-    if date_filter:
-        records = list(collection.find({"date": {"$regex": date_filter}}))
-    else:
-        records = list(collection.find())
-    return records
+# Streamlit App
+st.title("Voice to Text Sales Recorder")
+st.write("Upload your voice note to record sales information.")
 
-# Navigation
-menu = ["Home", "Sell Today", "History", "About Us"]
-choice = st.sidebar.selectbox("Navigation", menu)
+# Audio input
+audio_recognizer = sr.Recognizer()
+audio_file = st.file_uploader("Upload a voice note (.wav format)", type=["wav"])
 
-if choice == "Home":
-    st.title("Welcome to Grocery Store Sales Tracker!")
-    st.write("Navigate through the sidebar to record and view sales data.")
-    st.image("https://via.placeholder.com/400x200", caption="Your sales assistant!")
+if audio_file:
+    st.audio(audio_file)
 
-elif choice == "Sell Today":
-    st.title("Sell Today")
-    st.write("Record your sales here.")
+    with sr.AudioFile(audio_file) as source:
+        try:
+            # Recognize audio using SpeechRecognition
+            audio = audio_recognizer.record(source)
+            transcript = audio_recognizer.recognize_google(audio)
+            st.write(f"Detected Speech: {transcript}")
 
-    # Audio input
-    audio_recognizer = sr.Recognizer()
-    audio_value = st.audio_input("Record a voice message", type="wav")
+            # Parse description and price
+            parts = transcript.split("for")
+            if len(parts) == 2:
+                description = parts[0].strip()
+                price = parts[1].strip()
+                st.write(f"Description: {description}")
+                st.write(f"Price: {price}")
 
-    if audio_value:
-        st.audio(audio_value)
-
-        with sr.AudioFile(audio_value) as source:
-            try:
-                audio = audio_recognizer.record(source)
-                transcript = audio_recognizer.recognize_google(audio)
-                st.write(f"Detected Speech: {transcript}")
-
-                # Parsing description and price
-                parts = transcript.split("for")
-                if len(parts) == 2:
-                    description = parts[0].strip()
-                    price = parts[1].strip()
-                    st.write(f"Description: {description}")
-                    st.write(f"Price: {price}")
-
-                    # Save data
-                    today_date = datetime.now().strftime("%Y-%m-%d")
-                    save_to_db(description, price, today_date)
-                    st.success("Record saved successfully!")
-                else:
-                    st.error("Could not parse description and price from your input.")
-            except Exception as e:
-                st.error(f"Error processing audio: {e}")
-
-elif choice == "History":
-    st.title("Sales History")
-    filter_date = st.text_input("Enter a date (YYYY-MM-DD) to filter, or leave blank to view all records:")
-    records = get_history(filter_date)
-
-    if records:
-        for record in records:
-            st.write(f"**Date:** {record['date']}")
-            st.write(f"**Description:** {record['description']}")
-            st.write(f"**Price:** {record['price']}")
-            st.write("---")
-    else:
-        st.write("No records found.")
-
-elif choice == "About Us":
-    st.title("About Us")
-    st.write("""
-    Welcome to the Grocery Store Sales Tracker!
-    This app allows you to record daily sales through voice input and manage sales history.
-    """)
-
+                # Save to MongoDB
+                save_to_db(description, price)
+                st.success("Record saved successfully!")
+            else:
+                st.error("Could not parse description and price from the audio input.")
+        except Exception as e:
+            st.error(f"Error processing audio: {e}")
 
