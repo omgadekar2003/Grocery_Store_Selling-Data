@@ -18,7 +18,6 @@
 #collection = db["SalesRecords"]
 
 #
-
 import streamlit as st
 import speech_recognition as sr
 import re
@@ -71,22 +70,21 @@ def transcribe_audio():
 
 # Streamlit UI
 st.title("Voice Input to Item Description Parser")
-st.write("Record your voice and get the item description and price.")
+st.write("Speak your input clearly, and the system will process it automatically.")
 
-# Button to start the voice recording
-if st.button("Start Recording"):
-    text = transcribe_audio()
+# Listen for the voice input
+text = transcribe_audio()
+
+if text:
+    # Parse the transcribed text
+    quantity, description, price = parse_message(text)
     
-    if text:
-        # Parse the transcribed text
-        quantity, description, price = parse_message(text)
-        
-        if quantity and description and price:
-            st.write(f"Quantity: {quantity}")
-            st.write(f"Description: {description}")
-            st.write(f"Price: {price} Rupees")
-        else:
-            st.error("Could not parse the message correctly. Please try again.")
+    if quantity and description and price:
+        st.write(f"Quantity: {quantity}")
+        st.write(f"Description: {description}")
+        st.write(f"Price: {price} Rupees")
+    else:
+        st.error("Could not parse the message correctly. Please try again.")
 
 
 
