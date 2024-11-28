@@ -5,7 +5,5 @@
 
 streamlit
 pymongo
-SpeechRecognition
-pydub
-pyaudio
-ffmpeg
+speechrecognition
+
